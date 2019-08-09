@@ -105,10 +105,12 @@ module Mutex = Xapi_stdext_threads.Threadext.Mutex
 module Thread = Xapi_stdext_threads.Threadext.Thread
 module Hashtblext = Xapi_stdext_std.Hashtblext
 
+let uuid_of_domain di =
+  Uuid.string_of_uuid (Uuid.uuid_of_int_array di.Xenctrl.handle)
+
 let uuid_of_domid domains domid =
   try
-    Rrdd_server.string_of_domain_handle
-      (List.find (fun di -> di.Xenctrl.domid = domid) domains)
+    uuid_of_domain (List.find (fun di -> di.Xenctrl.domid = domid) domains)
   with Not_found ->
     failwith (Printf.sprintf "Failed to find uuid corresponding to domid: %d" domid)
 
@@ -350,7 +352,7 @@ let dss_mem_vms doms =
       let domid = dom.Xenctrl.domid in
       let kib = Xenctrl.pages_to_kib (Int64.of_nativeint dom.Xenctrl.total_memory_pages) in
       let memory = Int64.mul kib 1024L in
-      let uuid = Uuid.string_of_uuid (Uuid.uuid_of_int_array dom.Xenctrl.handle) in
+      let uuid = uuid_of_domain dom in
       let main_mem_ds = (
         Rrd.VM uuid,
         Ds.ds_make ~name:"memory" ~description:"Memory currently allocated to VM" ~units:"B"
@@ -466,8 +468,6 @@ let uuid_blacklist = [
   "deadbeef-dead-beef" ]
 
 let domain_snapshot xc =
-  let uuid_of_domain d =
-    Uuid.to_string (Uuid.uuid_of_int_array (d.Xenctrl.handle)) in
   let domains =
     List.filter
       (fun d ->
