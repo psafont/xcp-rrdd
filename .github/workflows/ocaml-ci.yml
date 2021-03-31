@@ -6,38 +6,32 @@ on:
 
 jobs:
   ocaml-test:
-    name: Ocaml tests
+    name: OCaml tests
     runs-on: ubuntu-20.04
-    env:
-      package: "rrdd-plugin rrddump rrd-transport xapi-rrdd xapi-rrdd-plugin xapi-rrd-transport xapi-rrd-transport-utils"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Pull configuration from xs-opam
-        run: |
-          curl --fail --silent https://raw.githubusercontent.com/xapi-project/xs-opam/master/tools/xs-opam-ci.env | cut -f2 -d " " > .env
+        run: curl --fail --silent https://raw.githubusercontent.com/xapi-project/xs-opam/master/tools/xs-opam-ci.env | cut -f2 -d " " > .env
 
       - name: Load environment file
         id: dotenv
-        uses: falti/dotenv-action@v0.2.4
+        uses: falti/dotenv-action@v0.2.5
 
-      - name: Use ocaml
-        uses: avsm/setup-ocaml@v1
+      - name: Use OCaml ${{ steps.dotenv.outputs.ocaml_version_full }}
+        uses: avsm/setup-ocaml@v2
         with:
-          ocaml-version: ${{ steps.dotenv.outputs.ocaml_version_full }}
+          ocaml-version: ocaml-base-compiler.${{ steps.dotenv.outputs.ocaml_version_full }}
           opam-repository: ${{ steps.dotenv.outputs.repository }}
+          dune-cache: true
 
       - name: Install dependencies
-        run: |
-          opam pin add . --no-action
-          opam depext -u ${{ env.package }}
-          opam install ${{ env.package }} --deps-only --with-test -v
+        run: opam install . --deps-only --with-test --verbose
 
       - name: Build
-        run: |
-          opam exec -- make build
+        run: opam exec -- make build
 
       - name: Run tests
         run: opam exec -- make test
